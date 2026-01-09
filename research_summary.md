@@ -4,9 +4,39 @@
 
 # Part I: Executive Summary
 
-The "No Quantum Advantage" hypothesis ($H_0$) has been **rejected** under specific architectural conditions. This research project isolated a distinct quantum mechanism—**Non-Linear Parity Resolution**—that creates a statistically significant advantage on correlation tasks.
+The "No Quantum Advantage" hypothesis ($H_0$) has been **partially validated**. Fixed Quantum Feature Maps provide advantage ONLY vs Linear classifiers, NOT vs MLPs.
 
-## Key Results\n\n| Task | 8Q Chain | 4Q Ring | Classical | Verdict |\n| :--- | :--- | :--- | :--- | :--- |\n| **Parity/XOR** | **100%** | 71% | 53% | \u2705 Quantum Advantage |\n| **Circle (Radial)** | **98%** | 69% | 69% | \u2705 Quantum Advantage |\n| **CIFAR-10 (100 epochs)** | 40% | 42% | **46%** | \u274c Classical Wins |\n\n## Core Discovery: The \"Goldilocks Zone\"\n\n**Quantum advantage is problem-specific, not universal.**\n\n- \u2705 **Excels at**: Parity/XOR, Radial Separation (Circle), Low-D correlation tasks\n- \u274c **Fails at**: High-dimensional natural images (CIFAR-10)\n\n### Best Architecture Found\n**8-Qubit Redundant Chain**: 4 inputs encoded cyclically into 8 qubits with Chain entanglement (Depth 1).\n- **Parity**: 100% (vs 71% for 4Q Ring)\n- **Circle**: 98% (vs 69% for 4Q Ring)\n- **Output**: 36 features (8 single + 28 two-body)\n\n## Thesis Statement\n\n\u003e \"Fixed Quantum Feature Maps are **specialized correlation filters** with a narrow \"Goldilocks Zone\" of applicability. On tasks with inherent parity or radial structure, they provide verifiable advantage. On generic high-dimensional data, classical baselines win.\"
+## Key Results: Complete Analysis (Linear vs MLP)
+
+| Task | 8Q Chain | **Linear** | **MLP** | vs Linear | vs MLP |
+|------|----------|------------|---------|-----------|--------|
+| `parity_4bit` | **100%** | 54% | 100% | **+45%** ✅ | ±0% |
+| `parity_8bit` | 53% | 54% | **100%** | -1% | **-47%** ❌ |
+| `circle_2d` | **99%** | 50% | 99% | **+49%** ✅ | ±0% |
+| `rings_3class` | 76% | 37% | **97%** | **+40%** ✅ | **-20%** ❌ |
+| `swiss_roll` | **99%** | 58% | 99% | **+41%** ✅ | ±0% |
+
+**BEFORE (vs Linear)**: Quantum wins **5/8 tasks** with **avg +27%** advantage
+**AFTER (vs MLP)**: Quantum wins **0/8 tasks** with **avg -14%** disadvantage
+
+## Core Discovery: Inductive Bias, Not Computational Advantage
+
+**Deep Parity Analysis** revealed the mechanism:
+- **⟨Z₆Z₇⟩ has Δ=2.0** — perfectly separates parity classes
+- Class 0: ⟨Z₆Z₇⟩ = **+1.0**, Class 1: ⟨Z₆Z₇⟩ = **-1.0**
+- This is **architecturally built-in**, NOT learned
+
+| Aspect | Quantum (8Q) | MLP (32 hidden) |
+|--------|--------------|-----------------|
+| Trainable params | **0** (in circuit) | 1,100 |
+| XOR encoding | **Built-in** | Learned |
+| Inductive bias | Parity/correlation | General nonlinearity |
+
+## Thesis Statement (Updated)
+
+> "Fixed Quantum Feature Maps encode an **inductive bias** for correlation/parity tasks in their entanglement structure. They do NOT provide computational advantage vs modern classical architectures (MLPs). The 'quantum advantage' is actually an **architectural prior**, analogous to CNNs for images or RNNs for sequences."
+
+
 
 ---
 
