@@ -106,7 +106,10 @@ def run_benchmark(task_name: str, task_config: Dict, epochs: int = 50,
     ]:
         print(f"\n  Training {model_name}...")
         
-        model = model_fn().to(device)
+        # Quantum models must run on CPU (TensorCircuit limitation)
+        model_device = "cpu" if "Q_" in model_name else device
+        
+        model = model_fn().to(model_device)
         optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
         criterion = nn.CrossEntropyLoss()
         
@@ -115,7 +118,7 @@ def run_benchmark(task_name: str, task_config: Dict, epochs: int = 50,
         for epoch in range(epochs):
             model.train()
             for x, y in dataset:
-                x, y = x.to(device), y.to(device)
+                x, y = x.to(model_device), y.to(model_device)
                 optimizer.zero_grad()
                 out = model(x)
                 loss = criterion(out, y)
@@ -127,7 +130,7 @@ def run_benchmark(task_name: str, task_config: Dict, epochs: int = 50,
         correct, total = 0, 0
         with torch.no_grad():
             for x, y in dataset:
-                x, y = x.to(device), y.to(device)
+                x, y = x.to(model_device), y.to(model_device)
                 out = model(x)
                 pred = out.argmax(dim=1)
                 correct += (pred == y).sum().item()
