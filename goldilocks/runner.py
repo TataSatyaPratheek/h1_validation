@@ -48,8 +48,19 @@ class SimpleQuantumClassifier(nn.Module):
         return self.classifier(x)
 
 
-class SimpleClassicalClassifier(nn.Module):
-    """Simple classical baseline for Goldilocks benchmarks."""
+class SimpleLinearClassifier(nn.Module):
+    """Linear classifier (no hidden layers) - the ORIGINAL baseline."""
+    
+    def __init__(self, input_dim: int, num_classes: int = 2):
+        super().__init__()
+        self.classifier = nn.Linear(input_dim, num_classes)
+    
+    def forward(self, x):
+        return self.classifier(x)
+
+
+class SimpleMLPClassifier(nn.Module):
+    """2-layer MLP with ReLU - the FAIR baseline."""
     
     def __init__(self, input_dim: int, hidden_dim: int = 32, num_classes: int = 2):
         super().__init__()
@@ -102,7 +113,8 @@ def run_benchmark(task_name: str, task_config: Dict, epochs: int = 50,
     for model_name, model_fn in [
         ("8Q_Chain", lambda: SimpleQuantumClassifier(input_dim, n_qubits=8, topology="chain", num_classes=num_classes)),
         ("4Q_Ring", lambda: SimpleQuantumClassifier(input_dim, n_qubits=4, topology="ring", num_classes=num_classes)),
-        ("Classical", lambda: SimpleClassicalClassifier(input_dim, num_classes=num_classes)),
+        ("Linear", lambda: SimpleLinearClassifier(input_dim, num_classes=num_classes)),
+        ("MLP", lambda: SimpleMLPClassifier(input_dim, num_classes=num_classes)),
     ]:
         print(f"\n  Training {model_name}...")
         
@@ -142,9 +154,9 @@ def run_benchmark(task_name: str, task_config: Dict, epochs: int = 50,
         results[model_name] = {"accuracy": accuracy, "time": elapsed}
         print(f"    {model_name}: {accuracy:.1f}% ({elapsed:.1f}s)")
     
-    # Compute quantum advantage
-    results["advantage_8Q"] = results["8Q_Chain"]["accuracy"] - results["Classical"]["accuracy"]
-    results["advantage_4Q"] = results["4Q_Ring"]["accuracy"] - results["Classical"]["accuracy"]
+    # Compute quantum advantage vs both baselines
+    results["advantage_vs_Linear"] = results["8Q_Chain"]["accuracy"] - results["Linear"]["accuracy"]
+    results["advantage_vs_MLP"] = results["8Q_Chain"]["accuracy"] - results["MLP"]["accuracy"]
     
     return results
 
