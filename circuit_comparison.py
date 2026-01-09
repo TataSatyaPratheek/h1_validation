@@ -113,50 +113,102 @@ def compute_entanglement_score(circuit_fn, n_samples=50, n_qubits=4):
 
 def compare_circuits_bar(save_path):
     """Bar chart comparing variance and entanglement across circuits."""
-    n_qubits = 4
+    
+    circuits = [
+        {"name": "4Q Ring (Baseline)", "n_qubits": 4, "depth": 2, "topology": "ring"},
+        {"name": "8Q Chain (Best)", "n_qubits": 8, "depth": 1, "topology": "chain"},
+        {"name": "8Q All2All", "n_qubits": 8, "depth": 1, "topology": "all2all"},
+    ]
     
     results = {}
-    for name, fn in CIRCUITS.items():
-        print(f"Analyzing: {name}")
-        var, mean = compute_variance_over_inputs(fn, n_samples=100, n_qubits=n_qubits)
-        ent_mean, ent_std = compute_entanglement_score(fn, n_samples=50, n_qubits=n_qubits)
+    
+    print(f"{'Circuit':<20} | {'Variance':<8} | {'Entanglement':<8}")
+    print("-" * 45)
+    
+    for config in circuits:
+        name = config["name"]
+        
+        # Factory function
+        def circuit_fn(inputs, weights):
+            n_qubits = config["n_qubits"]
+            c = tc.Circuit(n_qubits)
+            
+            # Enc (Redundant)
+            input_dim = inputs.shape[0]
+            for i in range(n_qubits):
+                c.ry(i, theta=inputs[i % input_dim])
+            
+            # Var
+            for d in range(config["depth"]):
+                if config["topology"] == "ring":
+                     for i in range(n_qubits):
+                        c.cnot(i, (i + 1) % n_qubits)
+                elif config["topology"] == "chain":
+                    for i in range(n_qubits - 1):
+                        c.cnot(i, i + 1)
+                elif config["topology"] == "all2all":
+                    for i in range(n_qubits):
+                        for j in range(i + 1, n_qubits):
+                            c.cnot(i, j)
+                
+                # Fixed weight layer for comparison
+                for i in range(n_qubits):
+                    c.ry(i, theta=1.0) 
+            
+            single = [c.expectation([tc.gates.z(), [i]]) for i in range(n_qubits)]
+            two_body = []
+            for i in range(n_qubits):
+                for j in range(i + 1, n_qubits):
+                    two_body.append(c.expectation([tc.gates.z(), [i]], [tc.gates.z(), [j]]))
+            return K.stack(single + two_body)
+        
+        vmap_circuit = K.vmap(circuit_fn, vectorized_argnums=0)
+        
+        # Generate inputs
+        # Note: Previous function expected n_qubits input, but now we have redundant encoding
+        # For fair comparison, let's feed 4 inputs to all (since dataset is 4D)
+        inputs = torch.randn(100, 4) 
+        
+        # 1. Variance
+        outputs = vmap_circuit(inputs, None).real
+        variance = torch.var(outputs).mean().item()
+        
+        # 2. Entanglement (Correlation Matrix Mean)
+        corr_matrix = torch.corrcoef(outputs.T)
+        n_feats = outputs.shape[1]
+        mask = torch.eye(n_feats, dtype=torch.bool)
+        mean_corr = torch.abs(corr_matrix[~mask]).mean().item() if n_feats > 1 else 0.0
+        
+        print(f"{name:<20} | {variance:.4f}   | {mean_corr:.4f}")
+        
         results[name] = {
-            "variance": np.mean(var),
-            "entanglement": ent_mean,
-            "ent_std": ent_std
+            "variance": variance,
+            "entanglement": mean_corr,
+            "ent_std": 0.0 # Simplified
         }
     
+    # Plotting code adapted for new results dict
     names = list(results.keys())
     variances = [results[n]["variance"] for n in names]
     entanglements = [results[n]["entanglement"] for n in names]
-    ent_stds = [results[n]["ent_std"] for n in names]
     
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
-    
     x = np.arange(len(names))
     width = 0.6
     
     # Variance
-    bars1 = ax1.bar(x, variances, width, color=['steelblue', 'coral', 'green', 'purple'])
-    ax1.set_ylabel('Feature Variance (higher = more expressive)')
-    ax1.set_title('Output Variance Across Random Inputs')
+    bars1 = ax1.bar(x, variances, width, color=['gray', 'green', 'purple'])
+    ax1.set_ylabel('Mean Feature Variance')
+    ax1.set_title('Output Variance (Expressivity)')
     ax1.set_xticks(x)
     ax1.set_xticklabels(names, rotation=15)
-    ax1.set_yscale('log')
-    for bar, v in zip(bars1, variances):
-        ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height(), f'{v:.4f}', 
-                 ha='center', va='bottom', fontsize=9)
     
     # Entanglement
-    bars2 = ax2.bar(x, entanglements, width, yerr=ent_stds, 
-                    color=['steelblue', 'coral', 'green', 'purple'], capsize=5)
-    ax2.set_ylabel('Correlation Strength |⟨ZiZj⟩ - ⟨Zi⟩⟨Zj⟩|')
-    ax2.set_title('Entanglement Measure (Correlation)')
+    bars2 = ax2.bar(x, entanglements, width, color=['gray', 'green', 'purple'])
+    ax2.set_ylabel('Mean Feature Correlation')
+    ax2.set_title('Entanglement (Feature Coupling)')
     ax2.set_xticks(x)
     ax2.set_xticklabels(names, rotation=15)
-    for bar, e in zip(bars2, entanglements):
-        ax2.text(bar.get_x() + bar.get_width()/2, bar.get_height(), f'{e:.3f}', 
-                 ha='center', va='bottom', fontsize=9)
     
     plt.tight_layout()
     plt.savefig(save_path, dpi=150)

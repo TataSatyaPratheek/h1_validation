@@ -6,24 +6,7 @@
 
 The "No Quantum Advantage" hypothesis ($H_0$) has been **rejected** under specific architectural conditions. This research project isolated a distinct quantum mechanism—**Non-Linear Parity Resolution**—that creates a statistically significant advantage on correlation tasks.
 
-## Key Results
-
-| Proof | Finding | Quantum | Classical |
-| :--- | :--- | :--- | :--- |
-| **Interaction** | Parity/XOR Task | **100.00%** | 53.10% |
-| **Capacity** | Wide Architecture (CIFAR) | **50.00%** | 52.50% |
-| **Gradient Flow** | 10k×100 Stability Test | 1.053 | 1.001 |
-
-## Core Discovery
-
-We distinguished **Feature Collapse** from **Vanishing Gradients**:
-- **Gradients flow** → Parameters update normally
-- **Features collapse** → All inputs map to same point (geometric, not optimization problem)
-- **Solution**: Width (parallel circuits), not Depth (more layers)
-
-## Thesis Statement
-
-> "Fixed Quantum Feature Maps are **specialized correlation filters**, not general-purpose extractors. Their utility is governed by the **Qubit-to-Feature Ratio**. For tasks dominated by global parity correlations, QFMs demonstrate verifiable advantage via **Implicit Interaction Terms** ($\langle Z_i Z_j \rangle$)."
+## Key Results\n\n| Task | 8Q Chain | 4Q Ring | Classical | Verdict |\n| :--- | :--- | :--- | :--- | :--- |\n| **Parity/XOR** | **100%** | 71% | 53% | \u2705 Quantum Advantage |\n| **Circle (Radial)** | **98%** | 69% | 69% | \u2705 Quantum Advantage |\n| **CIFAR-10 (100 epochs)** | 40% | 42% | **46%** | \u274c Classical Wins |\n\n## Core Discovery: The \"Goldilocks Zone\"\n\n**Quantum advantage is problem-specific, not universal.**\n\n- \u2705 **Excels at**: Parity/XOR, Radial Separation (Circle), Low-D correlation tasks\n- \u274c **Fails at**: High-dimensional natural images (CIFAR-10)\n\n### Best Architecture Found\n**8-Qubit Redundant Chain**: 4 inputs encoded cyclically into 8 qubits with Chain entanglement (Depth 1).\n- **Parity**: 100% (vs 71% for 4Q Ring)\n- **Circle**: 98% (vs 69% for 4Q Ring)\n- **Output**: 36 features (8 single + 28 two-body)\n\n## Thesis Statement\n\n\u003e \"Fixed Quantum Feature Maps are **specialized correlation filters** with a narrow \"Goldilocks Zone\" of applicability. On tasks with inherent parity or radial structure, they provide verifiable advantage. On generic high-dimensional data, classical baselines win.\"
 
 ---
 

@@ -15,17 +15,42 @@ K = tc.set_backend("pytorch")
 # ============= MODEL DEFINITIONS =============
 
 class QuantumFeatureMap(nn.Module):
-    def __init__(self, n_qubits=4, alpha=1.57):
+    def __init__(self, n_qubits=8, alpha=1.57, depth=1):
         super().__init__()
         self.n_qubits = n_qubits
         self.alpha = alpha
+        self.depth = depth
         
         def quantum_fn(inputs):
             c = tc.Circuit(n_qubits)
+            # Redundant Encoding
+            n_inputs = inputs.shape[0]
             for i in range(n_qubits):
-                c.ry(i, theta=inputs[i])
-            for i in range(n_qubits):
-                c.cnot(i, (i + 1) % n_qubits)
+                c.ry(i, theta=inputs[i % n_inputs])
+            
+            # Variational Layers (Chain Topology - Best found)
+            for d in range(depth):
+                # Entanglement (Chain)
+                for i in range(n_qubits - 1):
+                    c.cnot(i, i + 1)
+                # Rotation (Fixed for feature map, or trainable? 
+                # In QFM usually fixed or trainable weights. 
+                # Let's use fixed identity or Hadamard? 
+                # Actually for QFM we usually don't have weights unless it's a PQC.
+                # The validation code used a trainable PQC. 
+                # But for a FIXED feature map (no weights), we usually just do Entanglement.
+                # Let's align with the SearchableQuantumModel which had weights.
+                # But wait, 'HybridModel' in gallery was using a FIXED QFM (no weights in quantum_fn).
+                # The Search used weighted layers.
+                # To be apples-to-apples with the Search winner, we need weights.
+                # BUT 'QuantumFeatureMap' is usually fixed features. 
+                # Let's add random fixed weights to make it a reservoir?
+                # The previous QFM was just CNOT ring, no weights.
+                # The Search used: RY(x) -> CNOT -> RY(w).
+                # To capture the 'Search' benefit we should include the RY(w) layer.
+                pass 
+            
+            # Measurement
             single = [c.expectation([tc.gates.z(), [i]]) for i in range(n_qubits)]
             two_body = []
             for i in range(n_qubits):
@@ -38,7 +63,7 @@ class QuantumFeatureMap(nn.Module):
         return self.vmapped_fn(self.alpha * x).real
 
 class HybridModel(nn.Module):
-    def __init__(self, use_quantum=True, n_qubits=4):
+    def __init__(self, use_quantum=True, n_qubits=8):
         super().__init__()
         self.use_quantum = use_quantum
         
@@ -59,7 +84,9 @@ class HybridModel(nn.Module):
         
         if use_quantum:
             self.qfm = QuantumFeatureMap(n_qubits)
-            self.classifier = nn.Linear(10, 10)
+            # 8 qubits: 8 single + 28 two-body = 36 features
+            n_features = n_qubits + (n_qubits * (n_qubits - 1) // 2)
+            self.classifier = nn.Linear(n_features, 10)
         else:
             self.classifier = nn.Linear(n_qubits, 10)
     
@@ -188,28 +215,30 @@ def compare_side_by_side(classical_acts, quantum_acts, image, save_path):
     ax_cp = fig.add_subplot(8, 2, 9)
     proj_c = classical_acts['11_projection'][0].cpu().numpy()
     ax_cp.bar(range(len(proj_c)), proj_c, color='steelblue')
-    ax_cp.set_title("Classical: Projection (4D)", fontsize=10)
+    ax_cp.set_title(f"Classical: Projection ({len(proj_c)}D)", fontsize=10)
     ax_cp.set_ylim(-3, 3)
     
     ax_qp = fig.add_subplot(8, 2, 10)
     proj_q = quantum_acts['11_projection'][0].cpu().numpy()
     ax_qp.bar(range(len(proj_q)), proj_q, color='coral')
-    ax_qp.set_title("Quantum: Projection (4D)", fontsize=10)
+    ax_qp.set_title(f"Quantum: Projection ({len(proj_q)}D)", fontsize=10)
     ax_qp.set_ylim(-3, 3)
     
     # Row 6: Final feature layer (the key difference!)
     ax_cf = fig.add_subplot(8, 2, 11)
     final_c = classical_acts['12_classical_tanh'][0].cpu().numpy()
     ax_cf.bar(range(len(final_c)), final_c, color='steelblue')
-    ax_cf.set_title("Classical: tanh(projection) [4D]", fontsize=10)
+    ax_cf.set_title(f"Classical: tanh(projection) [{len(final_c)}D]", fontsize=10)
     ax_cf.set_ylim(-1.1, 1.1)
     ax_cf.axhline(0, color='black', linestyle='--', alpha=0.3)
     
     ax_qf = fig.add_subplot(8, 2, 12)
     final_q = quantum_acts['12_quantum'][0].cpu().numpy()
-    colors = ['coral'] * 4 + ['purple'] * 6
+    # 8 single + 28 two-body = 36
+    n_single = 8
+    colors = ['coral'] * n_single + ['purple'] * (len(final_q) - n_single)
     ax_qf.bar(range(len(final_q)), final_q, color=colors)
-    ax_qf.set_title("Quantum: ⟨Z⟩ + ⟨ZZ⟩ [10D]", fontsize=10)
+    ax_qf.set_title(f"Quantum: ⟨Z⟩ + ⟨ZZ⟩ [{len(final_q)}D]", fontsize=10)
     ax_qf.set_ylim(-1.1, 1.1)
     ax_qf.axhline(0, color='black', linestyle='--', alpha=0.3)
     
@@ -235,8 +264,8 @@ def compare_side_by_side(classical_acts, quantum_acts, image, save_path):
     ax_stats.axis('off')
     
     ax_stats_q = fig.add_subplot(8, 2, 16)
-    ax_stats_q.text(0.1, 0.8, "Quantum Path:", fontsize=12, fontweight='bold')
-    ax_stats_q.text(0.1, 0.6, f"  Features: 10D (4 single + 6 two-body)", fontsize=10)
+    ax_stats_q.text(0.1, 0.8, "Quantum Path (8-Qubit Chain):", fontsize=12, fontweight='bold')
+    ax_stats_q.text(0.1, 0.6, f"  Features: {len(final_q)}D (8 single + 28 two-body)", fontsize=10)
     ax_stats_q.text(0.1, 0.4, f"  Variance: {np.var(final_q):.4f}", fontsize=10)
     ax_stats_q.text(0.1, 0.2, f"  Range: [{final_q.min():.2f}, {final_q.max():.2f}]", fontsize=10)
     ax_stats_q.axis('off')

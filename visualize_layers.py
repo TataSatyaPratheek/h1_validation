@@ -65,7 +65,7 @@ def draw_bloch_sphere(ax, title=""):
 
 # ============= CIRCUIT WITH INTERMEDIATE STATES =============
 
-def get_layer_states(inputs, n_qubits=4):
+def get_layer_states(inputs, n_qubits=8):
     """Run circuit and capture state after each layer."""
     states = []
     layer_names = []
@@ -75,18 +75,21 @@ def get_layer_states(inputs, n_qubits=4):
     states.append(c.state().cpu().numpy())
     layer_names.append("L0: |0⟩ Initial")
     
-    # Layer 1: Ry encoding
+    # Layer 1: Redundant Ry encoding
     c = tc.Circuit(n_qubits)
+    input_dim = inputs.shape[0] if len(inputs.shape) == 1 else 1
+    # Handle scalar input case just in case? Usually inputs is tensor [features]
     for i in range(n_qubits):
-        c.ry(i, theta=float(inputs[i]))
+        c.ry(i, theta=float(inputs[i % input_dim]))
     states.append(c.state().cpu().numpy())
-    layer_names.append("L1: Ry Encoding")
+    layer_names.append("L1: Ry Encoding (Redundant)")
     
-    # Layers 2-5: CNOT ring
-    for cnot_idx in range(n_qubits):
-        c.cnot(cnot_idx, (cnot_idx + 1) % n_qubits)
-        states.append(c.state().cpu().numpy())
-        layer_names.append(f"L{2+cnot_idx}: CNOT {cnot_idx}→{(cnot_idx+1)%n_qubits}")
+    # Layers 2-5: Chain Entanglement (Best Architecture)
+    # We do just one full "layer" of entanglement which is n-1 gates
+    for i in range(n_qubits - 1):
+        c.cnot(i, i + 1)
+    states.append(c.state().cpu().numpy())
+    layer_names.append(f"L2: Chain Entanglement")
     
     return states, layer_names
 
@@ -179,8 +182,15 @@ def visualize_circuit_evolution(inputs, n_qubits=4, save_prefix="results/layer_v
     fig = plt.figure(figsize=(16, 10))
     
     # Top: Input
+    # Top: Input
     ax1 = fig.add_subplot(3, 1, 1)
-    ax1.bar(range(n_qubits), inputs.numpy(), color='green')
+    # Expand inputs to match n_qubits (redundant encoding visualization)
+    input_dim = inputs.shape[0] if len(inputs.shape) >= 1 else 1
+    expanded_inputs = np.zeros(n_qubits)
+    for i in range(n_qubits):
+        expanded_inputs[i] = inputs[i % input_dim] if input_dim > 0 else 0
+        
+    ax1.bar(range(n_qubits), expanded_inputs, color='green')
     ax1.set_title("Input Features (Classical)", fontsize=12)
     ax1.set_xlabel("Feature Index")
     ax1.set_ylabel("Value")
@@ -197,10 +207,12 @@ def visualize_circuit_evolution(inputs, n_qubits=4, save_prefix="results/layer_v
     # Bottom: Output expectations
     ax3 = fig.add_subplot(3, 1, 3)
     c = tc.Circuit(n_qubits)
+    input_dim = inputs.shape[0]
     for i in range(n_qubits):
-        c.ry(i, theta=float(inputs[i]))
-    for i in range(n_qubits):
-        c.cnot(i, (i + 1) % n_qubits)
+        c.ry(i, theta=float(inputs[i % input_dim]))
+    # Chain topology output
+    for i in range(n_qubits - 1):
+        c.cnot(i, i + 1)
     
     # Single body
     single = [c.expectation([tc.gates.z(), [i]]).cpu().numpy().real for i in range(n_qubits)]
@@ -233,15 +245,18 @@ def main():
     print("Phase 2: Layer-by-Layer Quantum State Visualization")
     print("="*60)
     
-    n_qubits = 4
+    n_qubits = 8
     
     # Test with different input types
+    # Test with different input types
     test_inputs = {
-        "random": torch.randn(n_qubits),
-        "uniform": torch.ones(n_qubits) * 0.5,
-        "gradient": torch.linspace(0, 1, n_qubits),
-        "binary_01": torch.tensor([0.0, 3.14, 0.0, 3.14]),  # Parity-like
-        "binary_10": torch.tensor([3.14, 0.0, 3.14, 0.0]),
+        "random": torch.randn(4), # 4 inputs -> 8 qubits
+        "uniform": torch.ones(4) * 0.5,
+        "gradient": torch.linspace(0, 1, 4),
+        "binary_0000": torch.tensor([0.0, 0.0, 0.0, 0.0]),
+        "binary_0101": torch.tensor([0.0, np.pi, 0.0, np.pi]),  # Parity 0
+        "binary_1010": torch.tensor([np.pi, 0.0, np.pi, 0.0]),  # Parity 0
+        "binary_1111": torch.tensor([np.pi, np.pi, np.pi, np.pi]), # Parity 0
     }
     
     for name, inputs in test_inputs.items():

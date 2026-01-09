@@ -10,18 +10,19 @@ This project rigorously validates the **Quantum Correlation Filter** hypothesis:
 
 ### Key Findings
 
-| Proof | Task | Quantum | Classical | Verdict |
+| Task | 8Q Chain | 4Q Ring | Classical | Verdict |
 | :--- | :--- | :--- | :--- | :--- |
-| **Interaction** | Parity/XOR | **100%** | 53% | ✅ Quantum Advantage |
-| **Capacity** | CIFAR-10 (Wide) | 50% | 52.5% | ✅ Escaped Bottleneck |
-| **Gradient Flow** | 10k×100 epochs | 1.05 | 1.00 | ✅ Both Healthy |
+| **Parity/XOR** | **100%** | 71% | 53% | ✅ Quantum Advantage |
+| **Circle (Radial)** | **98%** | 69% | 69% | ✅ Quantum Advantage |
+| **CIFAR-10 (100 epochs)** | 40% | 42% | **46%** | ❌ Classical Wins |
 
-### Core Discovery
+### Core Discovery: The "Goldilocks Zone"
 
-We distinguished **Feature Collapse** from **Vanishing Gradients**:
-- Gradients flow normally through Fixed QFMs
-- Features collapse geometrically (Concentration of Measure)
-- **Solution**: Width (parallel circuits), not Depth
+**Quantum advantage is problem-specific, not universal.**
+- ✅ **Excels at**: Parity/XOR, Radial Separation (Circle), Low-D correlation tasks
+- ❌ **Fails at**: High-dimensional natural images (CIFAR-10), Generic classification
+
+**New Architecture**: 8-Qubit Redundant Chain (4 inputs → 8 qubits via cyclic encoding)
 
 ## Installation
 
@@ -91,16 +92,19 @@ project-antigravity/
 CNN(64×64) → Flatten(4096) → [Projection(10) → QFM(4 qubits)]×16 → Linear(10)
 ```
 
-### Quantum Circuit (per block)
+### Quantum Circuit: 8-Qubit Redundant Chain (Best)
 ```
-|0⟩ ─ Ry(θ₀) ─●───────── ⟨Z⟩
-|0⟩ ─ Ry(θ₁) ─X─●─────── ⟨Z⟩
-|0⟩ ─ Ry(θ₂) ───X─●───── ⟨Z⟩
-|0⟩ ─ Ry(θ₃) ─────X─●─── ⟨Z⟩
-              └─────X─── (ring)
+|0⟩ ─ Ry(θ₀) ─●─────────────── ⟨Z⟩
+|0⟩ ─ Ry(θ₁) ─X─●───────────── ⟨Z⟩
+|0⟩ ─ Ry(θ₂) ───X─●─────────── ⟨Z⟩
+|0⟩ ─ Ry(θ₃) ─────X─●───────── ⟨Z⟩
+|0⟩ ─ Ry(θ₀) ───────X─●─────── ⟨Z⟩  (redundant encoding)
+|0⟩ ─ Ry(θ₁) ─────────X─●───── ⟨Z⟩
+|0⟩ ─ Ry(θ₂) ───────────X─●─── ⟨Z⟩
+|0⟩ ─ Ry(θ₃) ─────────────X─── ⟨Z⟩
 ```
 
-**Observables**: 4 single-body ⟨Zᵢ⟩ + 6 two-body ⟨ZᵢZⱼ⟩ = 10 features
+**Observables**: 8 single-body ⟨Zᵢ⟩ + 28 two-body ⟨ZᵢZⱼ⟩ = **36 features**
 
 ## Results
 

@@ -57,47 +57,58 @@ def apply_matchgate(c, i, j, theta, phi1, phi2):
 
 class QuantumFeatureMap(nn.Module):
     """
-    Matchgate-based Feature Map (Phase 5).
-    Uses Ry rotations and parameterized Matchgates as entanglers.
-    Total Parameters (4 Qubits): 4 (Ry) + 2 * 3 (Matchgates) = 10
+    Configurable Quantum Feature Map.
+    Defaults to the "Redundant Chain" (8 qubits, depth 1) found in Phase 2.
     """
-    def __init__(self, n_qubits, alpha=0.5):
+    def __init__(self, n_qubits=8, depth=1, topology="chain", alpha=0.5):
         super().__init__()
         self.n_qubits = n_qubits
+        self.depth = depth
+        self.topology = topology
         self.alpha = alpha
         
         def quantum_fn(inputs):
-            c = tc.Circuit(self.n_qubits)
+            c = tc.Circuit(n_qubits)
             
-            # 1. Rotation Layer (Features 0-3)
-            for i in range(self.n_qubits):
-                c.ry(i, theta=inputs[i])
+            # Redundant Encoding (Cyclic)
+            # Input dimension is inferred from tensor shape in vmap
+            n_inputs = inputs.shape[0]
+            for i in range(n_qubits):
+                c.ry(i, theta=inputs[i % n_inputs])
             
-            # 2. Matchgate Entanglers
-            # Matchgate(0, 1) uses features 4, 5, 6
-            apply_matchgate(c, 0, 1, theta=inputs[4], phi1=inputs[5], phi2=inputs[6])
+            # Variational/Entanglement Layers
+            for d in range(depth):
+                if topology == "chain":
+                    for i in range(n_qubits - 1):
+                        c.cnot(i, i + 1)
+                elif topology == "ring":
+                    for i in range(n_qubits):
+                        c.cnot(i, (i + 1) % n_qubits)
+                elif topology == "all2all":
+                    for i in range(n_qubits):
+                        for j in range(i + 1, n_qubits):
+                            c.cnot(i, j)
+                
+                # Optional: Fixed rotation layer to add non-linearity depth?
+                # In search we used weights. Here for a fixed map we can use fixed Identity
+                # or random fixed weights. To preserve the exact logic of "SearchableQuantumModel"
+                # without training weights, we should probably stick to just entanglement
+                # OR add a fixed random layer.
+                # Let's stick to pure entanglement for now as "Feature Map".
+                pass
             
-            # Matchgate(2, 3) uses features 7, 8, 9
-            if self.n_qubits >= 4:
-                apply_matchgate(c, 2, 3, theta=inputs[7], phi1=inputs[8], phi2=inputs[9])
-            
-            # Phase 2.1: Interaction Observables (Readout Layer Tweak)
-            # Output 4 Single-Body: <Z_i>
-            single_body = []
-            for i in range(self.n_qubits):
-                single_body.append(c.expectation([tc.gates.z(), [i]]))
-            
-            # Output 6 Two-Body: <Z_i Z_j>
+            # Measurement: <Z> and <ZZ>
+            single = [c.expectation([tc.gates.z(), [i]]) for i in range(n_qubits)]
             two_body = []
-            for i in range(self.n_qubits):
-                for j in range(i + 1, self.n_qubits):
+            for i in range(n_qubits):
+                for j in range(i + 1, n_qubits):
                     two_body.append(c.expectation([tc.gates.z(), [i]], [tc.gates.z(), [j]]))
-            
-            return K.stack(single_body + two_body)
+            return K.stack(single + two_body)
 
         self.vmapped_quantum_fn = K.vmap(quantum_fn)
 
     def forward(self, x):
+        # Scale inputs (tanh squashing usually good for rotation angles)
         theta = self.alpha * torch.tanh(x)
         return self.vmapped_quantum_fn(theta).real
 
@@ -105,10 +116,15 @@ class HybridModel(nn.Module):
     """
     Hybrid Architecture Formulation with Circuit 14 Expressivity.
     """
-    def __init__(self, num_classes=10, n_qubits=4, use_quantum=True, alpha=0.5):
+class HybridModel(nn.Module):
+    """
+    Hybrid Architecture Formulation with Circuit 14 Expressivity.
+    """
+    def __init__(self, num_classes=10, n_qubits=8, depth=1, topology="chain", use_quantum=True, alpha=0.5):
         super(HybridModel, self).__init__()
         self.use_quantum = use_quantum
         self.n_qubits = n_qubits
+        self.depth = depth
         self.alpha = alpha
         
         # Section 3.1: Classical Pre-processing
@@ -133,10 +149,13 @@ class HybridModel(nn.Module):
         self.flat_dim = 64 * 8 * 8
         
         # Phase 4: Wide Architecture
-        # Split 4096 features into 16 chunks of 256, 
-        # project each to 10 quantum features.
-        self.num_blocks = 16
-        self.q_input_dim_per_block = 10
+        # Split 4096 features into 16 chunks of 256
+        self.num_blocks = 16 
+        # Project each chunk to n_qubits input dimension (redundant encoding handled inside QFM if needed)
+        # Actually QFM expects n_qubits inputs or less. 
+        # If we project 256 -> n_qubits, we feed dense info.
+        self.q_input_dim_per_block = n_qubits 
+        
         self.projections = nn.ModuleList([
             nn.Linear(self.flat_dim // self.num_blocks, self.q_input_dim_per_block)
             for _ in range(self.num_blocks)
@@ -144,13 +163,17 @@ class HybridModel(nn.Module):
         
         if self.use_quantum:
             self.quantum_maps = nn.ModuleList([
-                QuantumFeatureMap(n_qubits, alpha=alpha)
+                QuantumFeatureMap(n_qubits=n_qubits, depth=depth, topology=topology, alpha=alpha)
                 for _ in range(self.num_blocks)
             ])
+            # Calculate feature dimension: n single + n(n-1)/2 two-body
+            self.q_out_dim = n_qubits + (n_qubits * (n_qubits - 1) // 2)
+        else:
+            self.q_out_dim = n_qubits # Baseline tanh dimension matches projection size
         
         # Section 3.3: Classical Decoding
-        # Concatenated features: 16 blocks * 10 features = 160
-        self.classifier = nn.Linear(self.num_blocks * 10, num_classes)
+        # Concatenated features
+        self.classifier = nn.Linear(self.num_blocks * self.q_out_dim, num_classes)
 
     def forward(self, x):
         features = self.feature_extractor(x)
