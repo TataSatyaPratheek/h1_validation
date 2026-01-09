@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+.eggs/
+*.manifest
+*.spec
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Data
+data/
+*.pt
+*.pth
+*.ckpt
+
+# Logs (keep structure, ignore large files)
+logs/*.log
+
+# Results (keep for repo)
+# results/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+
+# Environment
+.env
+.env.local
+
+# Large files
+*.pdf
+*.log
+*.json
+
+# Test outputs
+test_*.log
+
+# Research folder (local only)
+research/

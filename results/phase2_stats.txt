@@ -1,0 +1,10 @@
+Parsing logs...
+
+--- Hypothesis Testing (Burn-in: 10 epochs) ---
+Max Accuracy: Quantum=11.00%, Classical=46.00%
+Convergence Impact (AUC): Quantum=755.2, Classical=3767.0
+Stability (Loss Var, last 20 eps): Quantum=0.000001, Classical=0.000538
+Time Per Epoch: Quantum=1.48s, Classical=0.76s
+Time Difference T-Test: p-value=6.33846e-69 (Significant if < 0.05)
+
+Plot saved to comparison_plot.png
