@@ -30,6 +30,18 @@
 | 3. Scale | MPS to 500Q | +50% at scale |
 | 4. Spatial | 2D Grid encoding | **+3% CIFAR** ✅ |
 
+## Layer Activation Visualization
+
+### Quantum vs Classical Pipeline
+
+![Layer Activations](results/qfm_layer_visualization.png)
+
+### QFM Feature Heatmaps
+
+![Feature Heatmaps](results/qfm_feature_heatmaps.png)
+
+**Key Insight**: QFM preserves spatial structure via 2D entanglement, while classical flattening destroys it.
+
 ## Installation
 
 ```bash

@@ -37,6 +37,18 @@
 
 > **Insight**: QFM advantage requires matching circuit topology to problem structure.
 
+## Layer Activation Visualization
+
+### Quantum vs Classical Pipeline
+
+![Layer Activations](results/qfm_layer_visualization.png)
+
+### QFM Feature Heatmaps (Per Patch)
+
+![Feature Heatmaps](results/qfm_feature_heatmaps.png)
+
+**Key Visual Insight**: QFM preserves spatial structure through patching and 2D entanglement, while classical flattening destroys spatial relationships.
+
 ---
 
 # Phase 1: Parity Problems (+50% Advantage)
