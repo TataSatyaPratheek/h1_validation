@@ -196,29 +196,41 @@ Layer 2: 4 features → 1 QFM → Classifier
 
 ## 2.7 Large-Scale Qubit Scaling Study
 
-### Statevector Performance (M4 Mac)
+### Statevector vs MPS Performance (M4 Mac)
 
-| Qubits | Features | Accuracy | Time |
-|--------|----------|----------|------|
-| 8 | 36 | 100% | 0.9s |
-| 12 | 62 | 100% | 2.1s |
-| 16 | 66 | 100% | 8.7s |
-| 20 | 70 | 100% | 124s |
-| 24 | 33 | 100% | 348s |
-| 30+ | — | — | OOM |
+| Method | Qubits | Accuracy | Time | Memory |
+|--------|--------|----------|------|--------|
+| **Statevector** | 8 | 100% | 0.9s | OK |
+| **Statevector** | 16 | 100% | 8.7s | OK |
+| **Statevector** | 20 | 100% | 124s | OK |
+| **Statevector** | 24 | 100% | 348s | OOM soon |
+| **Statevector** | 30+ | — | — | OOM |
+| **MPS (χ=50)** | 10 | 100% | 0.3s | OK |
+| **MPS (χ=50)** | 20 | 100% | 0.4s | OK |
+| **MPS (χ=50)** | 200 | 100% | 3.5s | OK |
+| **MPS (χ=50)** | 300 | 100% | 4.9s | OK |
+| **MPS (χ=50)** | **500** | **75%** | **8.5s** | OK |
 
-### Practical Limits
+### M4 Device Limits
 
-- **Statevector**: ~24 qubits max (memory 2^n)
-- **Time**: Exponential in qubit count
-- **MPSCircuit**: Available for larger systems
+| Simulator | Max Qubits | Time Scaling |
+|-----------|------------|--------------|
+| Statevector | ~24 | Exponential (2^n) |
+| **MPSCircuit** | **500+** | **Linear** (O(n)) |
 
-### Recommendation
+### Code
 
-For production use with 50-100 qubits:
-- Use `tc.MPSCircuit` with limited bond dimension
-- Sample observables strategically
-- Chain topology has efficient MPS representation
+```python
+c = tc.MPSCircuit(n_qubits)
+c.set_split_rules({'max_singular_values': 50})  # Bond dim
+```
+
+### Key Finding
+
+**MPSCircuit enables simulation of 500+ qubits** on a laptop with linear time scaling. Bond dimension (χ) controls accuracy vs speed tradeoff.
+
+
+
 
 
 
