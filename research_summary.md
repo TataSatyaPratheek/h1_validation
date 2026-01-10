@@ -269,6 +269,19 @@ c.set_split_rules({'max_singular_values': 50})  # Bond dim
 4. **Odd pattern**: 50Q and 200Q show reduced advantage (needs investigation)
 5. **RAID benefits from higher-order** correlations (10-20 body)
 
+---
+
+## 2.9 MPS CIFAR-10 Test (No Quantum Advantage)
+
+| Approach | 64Q | 100Q | 200Q |
+|----------|-----|------|------|
+| Pure QFM | 20.0% | 20.0% | 20.0% |
+| Binary QFM | 13.3% | 13.3% | 13.3% |
+| **Classical (RF)** | — | — | **20.0%** |
+
+**Conclusion**: Even at 200 qubits with MPS, CIFAR shows **no quantum advantage**.
+
+> **CIFAR lacks the parity/XOR structure that QFM exploits.** The same QFM that achieves +50% advantage on parity achieves +0% on images.
 
 
 
