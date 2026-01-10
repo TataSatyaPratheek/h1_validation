@@ -163,6 +163,35 @@ Layer 2: 4 features → 1 QFM → Classifier
 
 **Quantum advantage confirmed in 2/3 practical parity applications!**
 
+---
+
+## 2.6 N-Body Correlation Study
+
+### Observable Types
+
+| Body | Features (n=5) | Description |
+|------|----------------|-------------|
+| 1-body | 5 | ⟨Zᵢ⟩ |
+| 2-body | 15 | + ⟨ZᵢZⱼ⟩ |
+| 3-body | 25 | + ⟨ZᵢZⱼZₖ⟩ |
+| 4-body | 30 | + ⟨ZᵢZⱼZₖZₗ⟩ |
+| 5-body | 31 | All correlations |
+
+### Results by Problem Type
+
+| Problem | 1-body | 2-body | 3-body | Best Classical |
+|---------|--------|--------|--------|----------------|
+| **Majority Vote** | 66% | **100%** | 100% | 100% (RF) |
+| **Sum mod 3** | 76% | **100%** | 100% | 100% (RF) |
+| **Hidden Parity** | 49% | 42% | 51% | **100%** (RF) |
+
+### Key Findings
+
+1. **2-body is sufficient** for XOR/parity problems (no benefit from 3+)
+2. **Majority and Mod functions** also solved with 2-body
+3. **Hidden parity fails** — circuit topology must match problem structure
+4. Higher-order correlations add features but not accuracy
+
 
 
 
