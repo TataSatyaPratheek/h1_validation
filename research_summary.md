@@ -113,6 +113,42 @@ Layer 2: 4 features → 1 QFM → Classifier
 
 **Why?** QFM provides the RIGHT features for parity. Two-body correlations ⟨ZᵢZⱼ⟩ directly compute XOR.
 
+---
+
+## 2.5 Real-World QFM Applications
+
+### Application 1: Error Detection in Binary Data ✅
+
+| Model | Accuracy |
+|-------|----------|
+| Raw Binary + Linear | 54% |
+| Raw Binary + MLP | 89.5% |
+| Raw Binary + RF | 89.5% |
+| **QFM + Linear** | **100%** ✅ |
+
+**Advantage: +10.5%** — QFM perfectly detects parity violations!
+
+### Application 2: DNA Mutation Detection
+
+| Model | Accuracy |
+|-------|----------|
+| DNA Binary + Linear | 100% |
+| DNA Binary + MLP | 100% |
+| DNA Binary + RF | 100% |
+| QFM + Linear | 79.5% |
+
+**No advantage** — Mutation task too simple for classical.
+
+### Key Insight
+
+QFM excels when:
+- **Parity IS the problem** (error detection)
+- Classical models struggle with XOR structure
+
+QFM struggles when:
+- Problem has other structure (spatial, sequential)
+- Classical can easily learn the pattern
+
 
 ## 2.2 Quantum Hybrid (Single Circuit)
 
