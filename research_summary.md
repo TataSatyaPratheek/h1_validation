@@ -42,14 +42,59 @@ The "No Quantum Advantage" hypothesis ($H_0$) has been **partially validated**. 
 
 # Part II: Architecture Details
 
-## 2.1 Classical Baseline
+## 2.1 Phase 4 Sweep Results (CIFAR-10)
 
+| Sweep | Options | Best | Accuracy |
+|-------|---------|------|----------|
+| **Depth** | 1, 5, 10, 25, 50 | D=50 | 16% |
+| **Topology** | chain, ring, all2all, star | All2All | 14% |
+| **Encoding** | angle, IQP, chebyshev | Angle | 15% |
+| **Optimal** | D=50 + All2All + Angle | — | 9% |
+| **MLP** | 2×64 hidden | — | **31%** |
+
+**Conclusion**: Fixed QFM cannot beat MLP on CIFAR regardless of depth/topology/encoding.
+
+## 2.2 The Spatial Problem
+
+**Why CIFAR fails**: Current pipeline **flattens** images (3×32×32 → 3072), destroying spatial structure.
+
+**The flow**:
 ```
-Input (3×64×64) → Conv2D(16) → Pool → Conv2D(32) → Pool → Conv2D(64) → Pool 
-→ Flatten (4096) → Linear(10) → Softmax
+Image (32×32×3) → Flatten (3072) → Project (8) → QFM → Classifier
+                        ↑
+                  SPATIAL INFO LOST HERE
 ```
 
-**Parameters**: ~50,000 trainable
+## 2.3 Spatial-Preserving Encodings (Proposed)
+
+### A. Patch-Based Encoding
+```
+Image → Split into 4×4 patches → Each patch → QFM → Pool → Classifier
+```
+- Preserves local spatial structure
+- Each patch processed independently (parallelizable)
+
+### B. Qubit Grid Topology
+```
+Qubit layout matches image grid:
+  Q0 - Q1 - Q2
+  |    |    |
+  Q3 - Q4 - Q5
+  |    |    |
+  Q6 - Q7 - Q8
+```
+- CNOT connections mirror pixel adjacency
+- Entanglement respects spatial locality
+
+### C. Hierarchical Pooling
+```
+Layer 1: 16 patches → 16 QFMs → Pool to 4
+Layer 2: 4 features → 1 QFM → Classifier
+```
+- Multi-scale spatial features
+- Like CNN pooling but quantum
+
+
 
 ## 2.2 Quantum Hybrid (Single Circuit)
 
