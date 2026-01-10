@@ -192,6 +192,33 @@ Layer 2: 4 features → 1 QFM → Classifier
 3. **Hidden parity fails** — circuit topology must match problem structure
 4. Higher-order correlations add features but not accuracy
 
+---
+
+## 2.7 Large-Scale Qubit Scaling Study
+
+### Statevector Performance (M4 Mac)
+
+| Qubits | Features | Accuracy | Time |
+|--------|----------|----------|------|
+| 8 | 36 | 100% | 0.9s |
+| 12 | 62 | 100% | 2.1s |
+| 16 | 66 | 100% | 8.7s |
+| 20 | 70 | 100% | 124s |
+| 24 | 33 | 100% | 348s |
+| 30+ | — | — | OOM |
+
+### Practical Limits
+
+- **Statevector**: ~24 qubits max (memory 2^n)
+- **Time**: Exponential in qubit count
+- **MPSCircuit**: Available for larger systems
+
+### Recommendation
+
+For production use with 50-100 qubits:
+- Use `tc.MPSCircuit` with limited bond dimension
+- Sample observables strategically
+- Chain topology has efficient MPS representation
 
 
 
